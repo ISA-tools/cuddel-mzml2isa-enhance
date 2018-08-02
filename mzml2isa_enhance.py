@@ -12,6 +12,7 @@ ISA = isatab.load(input_filepath)
 # only get first assay from first study obj
 study = ISA.studies[0]
 
+mapping = {}
 with open(mapping_filepath) as fp:
     mapping = json.load(fp)
     for v in mapping.values():
@@ -33,17 +34,19 @@ for assay in study.assays:
     """
 
     # insert the new parameter values
-    for ms_process in ms_processes:
-        pvs = ms_process.parameter_values
+    for k, v in mapping.items():
+        try:
+            ms_process = [x for x in ms_processes if k in [y.filename for y in x.outputs]][0]
+            pvs = ms_process.parameter_values
+            print('current pvs:', [x.category.parameter_name.term for x in pvs])
+            print('insert pvs here for ', ms_process.name)
+            """
+            Make sure to check if parameter to add exists, so that the pv is
+            updated rather than added to the pvs
+            """
+            print('new pvs:', [x.category.parameter_name.term for x in pvs])
+        except IndexError:
+            pass
 
-        print('current pvs:', [x.category.parameter_name.term for x in pvs])
-
-        print('insert pvs here')
-        """
-        Make sure to check if parameter to add exists, so that the pv is
-        updated rather than added to the pvs
-        """
-
-        print('new pvs:', [x.category.parameter_name.term for x in pvs])
 
 isatab.dump(ISA, output_filepath)
