@@ -1,4 +1,5 @@
 from isatools import isatab
+from isatools.model import *
 import sys
 import json
 import os
@@ -15,14 +16,6 @@ study = ISA.studies[0]
 mapping = {}
 with open(mapping_filepath) as fp:
     mapping = json.load(fp)
-    for v in mapping.values():
-        with open(os.path.join('MTBLS265-no-binary', 'json_meta', v + '.json')) as fp2:
-            meta = json.load(fp2)
-            ms_protocol = [x for x in study.protocols
-                           if 'mass spectrometry' in x.protocol_type.term][0]
-            for k2 in meta.keys():
-                if not ms_protocol.get_param(k2):
-                    ms_protocol.add_param(k2)
 
 for assay in study.assays:
     # get mass spectrometry processes only
@@ -35,11 +28,35 @@ for assay in study.assays:
 
     # insert the new parameter values
     for k, v in mapping.items():
+        with open(os.path.join('MTBLS265-no-binary', 'json_meta', v + '.json')) as fp2:
+            mzml_meta = json.load(fp2)
         try:
             ms_process = [x for x in ms_processes if k in [y.filename for y in x.outputs]][0]
             pvs = ms_process.parameter_values
             print('current pvs:', [x.category.parameter_name.term for x in pvs])
             print('insert pvs here for ', ms_process.name)
+            for item in mzml_meta:
+                if not ms_process.executes_protocol.get_param(item):
+                    print('need to add ', item, ' to protocol')
+                    ms_process.executes_protocol.add_param(item)
+                param = ms_process.executes_protocol.get_param(item)
+                meta_item = mzml_meta[item]
+                if 'value' in meta_item.keys():
+                    value = meta_item['value']  # check for unit as well
+                elif 'name' in meta_item.keys():
+                    value = meta_item['name']  # check for ontology annotation
+                elif 'entry_list' in meta_item.keys():
+                    values = meta_item['entry_list']
+                    if 'value' in values[-1].keys():
+                        value = values[-1]['value']  # check for unit as well
+                    elif 'name' in values[-1].keys():
+                        value = values[-1]['name']  # check for ontology annotation
+                    else:
+                        raise IOError(values[-1])
+                else:
+                    raise IOError(meta_item)
+                pv = ParameterValue(category=param, value=value)
+                ms_process.parameter_values.append(pv)
             """
             Make sure to check if parameter to add exists, so that the pv is
             updated rather than added to the pvs
