@@ -8,3 +8,4 @@ Run with something like:
 ```
 python mzml2isa_enhance.py test-isa/ tmp/ mzml2isa_mapping.json
 ```
+Requires `isatools==0.10.2`.
